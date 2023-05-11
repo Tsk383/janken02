@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/sample.css">
+  <title>人狼ゲーム(仮)</title>
+</head>
+
+<body>
+  <header>
+  </header>
+  <canvas style="background-color:#cef;" id="bg" width="800" height="600"></canvas>
+  <main>
+  </main>
+  <footer></footer>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script>
+
+    var idx = 0; //画面切り替え用カウント変数
+    var tmr = 0;
+    const min = 0;
+    const max = 3;
+    let randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+    let judge_id = 0;
+    let another_judge = 0;
+    let your_point = 0;
+    let A_point = 0;
+    let B_point = 0;
+    let C_point = 0;
+    let i = 0;//カウント用変数
+    var player = ["あなた", "A", "B", "C"];//各プレイヤーid
+    var jinro_check = [0, 0, 0, 0];//人狼になったプレイヤーの値は1になる
+    var select = [0, 0, 0, 0];//配列内の数値はi番目の人物に投票していることを示す
+    var your_job;
+    var canvas = document.getElementById("bg");
+    var cnt = canvas.getContext("2d");
+    cnt.font = "36px monospace";
+    cnt.textAlign = "center";
+    cnt.textBaseline = "middle";
+
+    //マウスとタップの判定
+    var tapX = 0, tapY = 0, tapC = 0;
+
+    if ('ontouchend' in document) {
+      canvas.addEventListener("touchstart", touchStart);
+      canvas.addEventListener("touchend", touchEnd);
+      function touchStart(event) {
+        event.preventDefault();
+        var rect = event.target.getBoundingClientRect();
+        tapX = Math.floor(event.touches[0].clientX - rect.left);
+        tapY = Math.floor(event.touches[0].clientY - rect.top);
+        tapC = 1;
+      }
+      function touchEnd(event) {
+        event.preventDefault();
+        tapC = 0;
+      }
+    }
+    else {
+      canvas.addEventListener("mousedown", mouseDown);
+      canvas.addEventListener("mouseup", mouseUp);
+      function mouseDown(event) {
+        var rect = event.target.getBoundingClientRect();
+        tapX = event.clientX - rect.left;
+        tapY = event.clientY - rect.top;
+        tapC = 1;
+      }
+      function mouseUp(event) {
+        tapC = 0;
+      }
+    }
+
+    //描画用の関数
+    function fText(str, x, y, col) {//文字表示
+      cnt.fillStyle = col;
+      cnt.fillText(str, x, y);
+    }
+
+    function fRect(x, y, w, h, col) {//矩形
+      cnt.fillStyle = col;
+      cnt.fillRect(x, y, w, h);
+    }
+    //参考からコピー ここまで
+    //以下から処理を開始
+    window.onload = indexProc();
+    function indexProc() {
+      tmr++;
+      fRect(0, 0, 800, 600, "#000");
+      fText("インデックス:" + idx, 200, 25, "#ff0");
+      fText("タイマー:" + tmr, 600, 25, "#0ff");
+      fText("tapX=" + tapX + " tapY=" + tapY + " tapC=" + tapC, 400, 575, "#fff");
+      switch (idx) {
+        case 0:
+          //タイトル画面
+          fRect(100, 100, 600, 200, "#cf8");
+          fText("ワンナイト人狼(仮)", 400, 200, "#000");
+          fText("画面をタップしてスタート", 400, 400, "#fff");
+          if (tapC == 1) { idx = 1; tmr = 0; tapC = 0; }
+          break;
+
+        case 1:
+          //プレイヤーの役職決め(ランダム変数で決定)
+          //0 村人
+          //1 人狼
+          jinro_check[randomNumber] = 1;
+          if (jinro_check[0] === 0) {
+            //プレイヤーの役職は村人
+            your_job = "村人";
+          } else {
+            //プレイヤーの役職は人狼
+            your_job = "人狼";
+          }
+          fText("あなたの役職は:" + your_job, 400, 300, "#fff");
+          if (tapC == 1) { idx = 2; tmr = 0; tapC = 0; }
+          break;
+
+        case 2:
+          //自分の投票パート
+          fText("誰に投票しますか？", 400, 100, "#fff");
+          fText("Aに投票する", 400, 200, "#8f8");
+          fText("Bに投票する", 400, 300, "#8f8");
+          fText("Cに投票する", 400, 400, "#8f8");
+          if (tapC == 1) {
+            if (250 <= tapX && tapX < 550 && 150 <= tapY && tapY < 250) { A_point++; idx = 3; tmr = 0; tapC = 0; select[0] = 1; alert("Aに投票しました") }
+            if (250 <= tapX && tapX < 550 && 250 <= tapY && tapY < 350) { B_point++; idx = 3; tmr = 0; tapC = 0; select[0] = 2; alert("Bに投票しました") }
+            if (250 <= tapX && tapX < 550 && 350 <= tapY && tapY < 450) { C_point++; idx = 3; tmr = 0; tapC = 0; select[0] = 3; alert("Cに投票しました") }
+          }
+          break;
+
+        case 3:
+          //自分以外の投票パート
+          if (i < 3) {
+            for (i = 0; i < 3; i++) {
+              another_judge = Math.floor(Math.random() * 4);
+              if (another_judge === 0) {
+                your_point++;
+                fText(player[i + 1] + "はあなたに投票しました。", 400, 200 + i * 100, "#fff");
+                select[i + 1] = 0;
+              } else if (another_judge === 1) {
+                A_point++;
+                fText(player[i + 1] + "はAに投票しました。", 400, 200 + i * 100, "#fff");
+                select[i + 1] = 1;
+              } else if (another_judge === 2) {
+                B_point++;
+                fText(player[i + 1] + "はBに投票しました。", 400, 200 + i * 100, "#fff");
+                select[i + 1] = 2;
+              } else {
+                C_point++;
+                fText(player[i + 1] + "はCに投票しました。", 400, 200 + i * 100, "#fff");
+                select[i + 1] = 3;
+              }
+            }
+          }
+          for (let case3_count = 0; case3_count < 3; case3_count++) {
+            if (select[case3_count + 1] === 0) {
+              fText(player[case3_count + 1] + "はあなたに投票しました。", 400, 200 + case3_count * 100, "#fff");
+            } else if (select[case3_count + 1] === 1) {
+              fText(player[case3_count + 1] + "はAに投票しました。", 400, 200 + case3_count * 100, "#fff");
+            } else if (select[case3_count + 1] === 2) {
+              fText(player[case3_count + 1] + "はBに投票しました。", 400, 200 + case3_count * 100, "#fff");
+            } else {
+              fText(player[case3_count + 1] + "はCに投票しました。", 400, 200 + case3_count * 100, "#fff");
+            }
+          }
+          if (tapC == 1) { idx = 4; tmr = 0; tapC = 0; }
+          break;
+
+        case 4:
+          //判決パート
+          if (your_point === Math.max(your_point, A_point, B_point, C_point)) {
+            //自身への投票数が多いときに表示
+            fText("選ばれたのはあなたでした", 400, 300, "#fff");
+            judge_id = 0;
+          } else if (A_point === Math.max(your_point, A_point, B_point, C_point)) {
+            //Aへの投票数が多いときに表示
+            fText("選ばれたのはAでした", 400, 300, "#fff");
+            judge_id = 1;
+          } else if (B_point === Math.max(your_point, A_point, B_point, C_point)) {
+            //Bへの投票数が多いときに表示
+            fText("選ばれたのはBでした", 400, 300, "#fff");
+            judge_id = 2;
+          } else {
+            //Cへの投票数が多いときに表示
+            fText("選ばれたのはCでした", 400, 300, "#fff");
+            judge_id = 3;
+          }
+          if (tapC == 1) { idx = 5; tmr = 0; tapC = 0; }
+          break;
+
+        case 5:
+          //結果発表
+          fText("結果発表", 400, 200, "#fff");
+          if (randomNumber === judge_id) {
+            fText("Winner 村人", 400, 300, "#fff");
+          } else {
+            fText("Winner 人狼", 400, 300, "#fff");
+          }
+          fText("人狼は" + player[randomNumber] + "でした", 400, 400, "#fff");
+          if (tapC == 1) { idx = 0; tmr = 0; tapC = 0; i = 0; randomNumber = Math.floor(Math.random() * (max - min + 1)) + min; jinro_check = [0, 0, 0, 0]; your_point = 0; A_point = 0; B_point = 0; C_point = 0; }
+          break;
+      }
+      setTimeout(indexProc, 100);
+    }
+  </script>
+
+</body>
+
+</html>
